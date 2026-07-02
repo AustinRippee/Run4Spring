@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mileage Tracker | Run4Spring</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">Run<span>4</span>Spring</a>
+    <div class="nav-links"><a href="/">Home</a></div>
+  </nav>
+  <main class="container">
+    <div class="page-header">
+      <h1>Mileage Tracker</h1>
+      <p>Log workouts and view your activity history.</p>
+    </div>
+
+    <div class="card">
+      <div class="info-note">
+        Activities are stored in memory for this session only and will clear when the server restarts.
+      </div>
+      <form id="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="type">Activity Type</label>
+            <select id="type" required>
+              <option value="run">Run</option>
+              <option value="bike">Bike</option>
+              <option value="swim">Swim</option>
+              <option value="walk">Walk</option>
+              <option value="lifting">Lifting</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" placeholder="e.g. Morning 5K" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="duration">Duration</label>
+            <input type="text" id="duration" placeholder="e.g. 0:25:00" required>
+            <div class="form-hint">Format: H:MM:SS</div>
+          </div>
+          <div class="form-group" id="distanceGroup">
+            <label for="distance">Distance</label>
+            <input type="number" id="distance" placeholder="e.g. 3.1" step="0.01" min="0">
+            <div class="form-hint">In miles (for runs/bikes/walks)</div>
+          </div>
+        </div>
+        <div class="form-group" id="paceGroup">
+          <label for="avgPace">Average Pace</label>
+          <input type="text" id="avgPace" placeholder="e.g. 8:03">
+          <div class="form-hint">Format: M:SS per mile</div>
+        </div>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label for="minHR">Min Heart Rate</label>
+            <input type="number" id="minHR" placeholder="e.g. 110" min="0">
+          </div>
+          <div class="form-group">
+            <label for="maxHR">Max Heart Rate</label>
+            <input type="number" id="maxHR" placeholder="e.g. 165" min="0">
+          </div>
+          <div class="form-group">
+            <label for="avgHR">Avg Heart Rate</label>
+            <input type="number" id="avgHR" placeholder="e.g. 145" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="calories">Calories Burned</label>
+          <input type="number" id="calories" placeholder="e.g. 420" min="0">
+        </div>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Log Activity</button>
+      </form>
+      <div class="error-msg" id="error"></div>
+    </div>
+
+    <div id="activityList"></div>
+  </main>
+
+  <script>
+    const typeSelect = document.getElementById('type');
+    const distanceGroup = document.getElementById('distanceGroup');
+    const paceGroup = document.getElementById('paceGroup');
+
+    function updateFieldVisibility() {
+      const t = typeSelect.value;
+      const showDist = ['run', 'bike', 'swim', 'walk'].includes(t);
+      const showPace = t === 'run';
+      distanceGroup.style.display = showDist ? '' : 'none';
+      paceGroup.style.display = showPace ? '' : 'none';
+    }
+    typeSelect.addEventListener('change', updateFieldVisibility);
+    updateFieldVisibility();
+
+    async function loadActivities() {
+      const list = document.getElementById('activityList');
+      try {
+        const res = await fetch('/api/activities');
+        const activities = await res.json();
+        if (!activities.length) {
+          list.innerHTML = '<div class="empty-state">No activities logged yet. Add one above.</div>';
+          return;
+        }
+        list.innerHTML = activities.map(a => {
+          const meta = [];
+          if (a.duration)       meta.push(`Duration: ${a.duration}`);
+          if (a.distance)       meta.push(`Distance: ${a.distance} mi`);
+          if (a.avgPace)        meta.push(`Avg Pace: ${a.avgPace}/mi`);
+          if (a.avgHeartRate)   meta.push(`HR: ${a.avgHeartRate} avg`);
+          if (a.caloriesBurned) meta.push(`Calories: ${a.caloriesBurned}`);
+          return `
+            <div class="activity-item">
+              <div class="activity-item-header">
+                <span class="activity-title">${a.title || '(untitled)'}</span>
+                <span class="activity-type">${a.type || ''}</span>
+              </div>
+              <div class="activity-meta">${meta.map(m => `<span>${m}</span>`).join('')}</div>
+            </div>`;
+        }).join('');
+      } catch {
+        list.innerHTML = '<div class="empty-state">Could not load activities.</div>';
+      }
+    }
+
+    document.getElementById('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const error = document.getElementById('error');
+      error.className = 'error-msg';
+      btn.disabled = true;
+      btn.textContent = 'Logging...';
+
+      const type = typeSelect.value;
+      const body = {
+        type,
+        title:          document.getElementById('title').value.trim(),
+        duration:       document.getElementById('duration').value.trim(),
+        minHeartRate:   parseInt(document.getElementById('minHR').value) || 0,
+        maxHeartRate:   parseInt(document.getElementById('maxHR').value) || 0,
+        avgHeartRate:   parseInt(document.getElementById('avgHR').value) || 0,
+        caloriesBurned: parseInt(document.getElementById('calories').value) || 0,
+        distance:       parseFloat(document.getElementById('distance').value) || null,
+        avgPace:        document.getElementById('avgPace').value.trim() || null
+      };
+
+      try {
+        const res = await fetch('/api/activities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+
+        const text = await res.text();
+        if (!res.ok) {
+          error.textContent = text || 'An error occurred.';
+          error.className = 'error-msg visible';
+        } else {
+          document.getElementById('form').reset();
+          updateFieldVisibility();
+          await loadActivities();
+        }
+      } catch {
+        error.textContent = 'Could not reach the server. Is the app running?';
+        error.className = 'error-msg visible';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Log Activity';
+      }
+    });
+
+    loadActivities();
+  </script>
+</body>
+</html>

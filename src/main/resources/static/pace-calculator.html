@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pace Calculator | Run4Spring</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">Run<span>4</span>Spring</a>
+    <div class="nav-links"><a href="/">Home</a></div>
+  </nav>
+  <main class="container">
+    <div class="page-header">
+      <h1>Pace Calculator</h1>
+      <p>Fill in any two fields and click Calculate to solve for the third.</p>
+    </div>
+
+    <div class="card">
+      <div class="form-group">
+        <label for="unit">Distance Unit</label>
+        <select id="unit" style="max-width:200px">
+          <option value="miles">Miles</option>
+          <option value="km">Kilometers</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="distance">Distance</label>
+        <input type="text" id="distance" placeholder="e.g. 3.1">
+        <div class="form-hint" id="distanceHint">In miles</div>
+      </div>
+      <div class="form-group">
+        <label for="time">Total Time</label>
+        <input type="text" id="time" placeholder="e.g. 25:00 or 1:05:30">
+        <div class="form-hint">Format: M:SS or H:MM:SS</div>
+      </div>
+      <div class="form-group">
+        <label for="pace">Pace</label>
+        <input type="text" id="pace" placeholder="e.g. 8:03">
+        <div class="form-hint" id="paceHint">Format: M:SS per mile</div>
+      </div>
+
+      <button class="btn btn-primary" id="calcBtn" onclick="calculate()">Calculate</button>
+      <button class="btn btn-outline" style="margin-left: 0.5rem" onclick="clearAll()">Clear</button>
+      <div class="error-msg" id="error"></div>
+    </div>
+  </main>
+
+  <script>
+    const unitSelect = document.getElementById('unit');
+    unitSelect.addEventListener('change', () => {
+      const isKm = unitSelect.value === 'km';
+      document.getElementById('distanceHint').textContent = isKm ? 'In kilometers' : 'In miles';
+      document.getElementById('paceHint').textContent = `Format: M:SS per ${isKm ? 'km' : 'mile'}`;
+    });
+
+    function parseTime(str) {
+      if (!str || !str.trim()) return null;
+      const parts = str.trim().split(':').map(Number);
+      if (parts.some(isNaN)) return null;
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return parts[0];
+    }
+
+    function formatTime(totalSecs) {
+      if (totalSecs < 0 || !isFinite(totalSecs)) return '—';
+      const h = Math.floor(totalSecs / 3600);
+      const m = Math.floor((totalSecs % 3600) / 60);
+      const s = Math.round(totalSecs % 60);
+      const mm = String(m).padStart(2, '0');
+      const ss = String(s).padStart(2, '0');
+      return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+    }
+
+    function formatPace(secsPerUnit) {
+      if (secsPerUnit <= 0 || !isFinite(secsPerUnit)) return '—';
+      const m = Math.floor(secsPerUnit / 60);
+      const s = Math.round(secsPerUnit % 60);
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function calculate() {
+      const error = document.getElementById('error');
+      error.className = 'error-msg';
+
+      const distStr  = document.getElementById('distance').value.trim();
+      const timeStr  = document.getElementById('time').value.trim();
+      const paceStr  = document.getElementById('pace').value.trim();
+
+      const dist = distStr  ? parseFloat(distStr)  : null;
+      const time = timeStr  ? parseTime(timeStr)   : null;
+      const pace = paceStr  ? parseTime(paceStr)   : null;
+
+      const missing = [dist === null, time === null, pace === null];
+      const missingCount = missing.filter(Boolean).length;
+
+      if (missingCount === 0) {
+        error.textContent = 'All three fields are filled in. Clear one to calculate it.';
+        error.className = 'error-msg visible';
+        return;
+      }
+      if (missingCount > 1) {
+        error.textContent = 'Fill in any two fields to calculate the third.';
+        error.className = 'error-msg visible';
+        return;
+      }
+
+      if (missing[0]) {
+        // Solve for distance
+        const result = time / pace;
+        document.getElementById('distance').value = result.toFixed(2);
+      } else if (missing[1]) {
+        // Solve for time
+        const result = dist * pace;
+        document.getElementById('time').value = formatTime(result);
+      } else {
+        // Solve for pace
+        const result = time / dist;
+        document.getElementById('pace').value = formatPace(result);
+      }
+    }
+
+    function clearAll() {
+      document.getElementById('distance').value = '';
+      document.getElementById('time').value = '';
+      document.getElementById('pace').value = '';
+      document.getElementById('error').className = 'error-msg';
+    }
+  </script>
+</body>
+</html>

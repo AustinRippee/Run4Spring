@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pace Convert | Run4Spring</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">Run<span>4</span>Spring</a>
+    <div class="nav-links"><a href="/">Home</a></div>
+  </nav>
+  <main class="container">
+    <div class="page-header">
+      <h1>Pace Convert</h1>
+      <p>Convert a race time to an equivalent performance at a different distance.</p>
+    </div>
+
+    <div class="card">
+      <form id="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="distance">Race Distance</label>
+            <select id="distance" required>
+              <optgroup label="Sprints">
+                <option value="100m">100m</option>
+                <option value="150m">150m</option>
+                <option value="200m">200m</option>
+                <option value="300m">300m</option>
+                <option value="400m">400m</option>
+                <option value="600m">600m</option>
+              </optgroup>
+              <optgroup label="Middle Distance">
+                <option value="800m">800m</option>
+                <option value="1000m">1000m</option>
+                <option value="1500m">1500m</option>
+                <option value="1600m">1600m</option>
+                <option value="mile">Mile</option>
+                <option value="2 mile">2 Mile</option>
+              </optgroup>
+              <optgroup label="Distance">
+                <option value="3000m">3000m</option>
+                <option value="3200m">3200m</option>
+                <option value="5k" selected>5K</option>
+                <option value="6k">6K</option>
+                <option value="8k">8K</option>
+                <option value="10k">10K</option>
+                <option value="10 miles">10 Miles</option>
+              </optgroup>
+              <optgroup label="Long Distance">
+                <option value="half marathon">Half Marathon</option>
+                <option value="marathon">Marathon</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="time">Race Time</label>
+            <input type="text" id="time" placeholder="e.g. 20:00 or 1:05:30" required>
+            <div class="form-hint">Format: M:SS, MM:SS, or H:MM:SS</div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="convertTo">Convert To</label>
+          <select id="convertTo" required>
+            <optgroup label="Sprints">
+              <option value="100m">100m</option>
+              <option value="150m">150m</option>
+              <option value="200m">200m</option>
+              <option value="300m">300m</option>
+              <option value="400m">400m</option>
+              <option value="600m">600m</option>
+            </optgroup>
+            <optgroup label="Middle Distance">
+              <option value="800m">800m</option>
+              <option value="1000m">1000m</option>
+              <option value="1500m">1500m</option>
+              <option value="1600m">1600m</option>
+              <option value="mile">Mile</option>
+              <option value="2 mile">2 Mile</option>
+            </optgroup>
+            <optgroup label="Distance">
+              <option value="3000m">3000m</option>
+              <option value="3200m">3200m</option>
+              <option value="5k">5K</option>
+              <option value="6k">6K</option>
+              <option value="8k">8K</option>
+              <option value="10k">10K</option>
+              <option value="10 miles">10 Miles</option>
+            </optgroup>
+            <optgroup label="Long Distance">
+              <option value="half marathon">Half Marathon</option>
+              <option value="marathon" selected>Marathon</option>
+            </optgroup>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Convert</button>
+      </form>
+      <div class="error-msg" id="error"></div>
+    </div>
+
+    <div class="card result" id="result">
+      <div class="card-title">Result</div>
+      <div class="result-row">
+        <span class="result-label">Input</span>
+        <span class="result-value" id="res-input"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Converted To</span>
+        <span class="result-value" id="res-target"></span>
+      </div>
+      <div class="result-row" style="border-bottom:none">
+        <span class="result-label">Equivalent Time</span>
+        <span class="result-big" id="res-time"></span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    document.getElementById('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const error = document.getElementById('error');
+      const result = document.getElementById('result');
+
+      error.className = 'error-msg';
+      result.className = 'card result';
+      btn.disabled = true;
+      btn.textContent = 'Converting...';
+
+      try {
+        const res = await fetch('/api/pace/convert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            distance: document.getElementById('distance').value,
+            time: document.getElementById('time').value.trim(),
+            convertTo: document.getElementById('convertTo').value
+          })
+        });
+
+        const text = await res.text();
+        if (!res.ok) {
+          error.textContent = text || 'An error occurred.';
+          error.className = 'error-msg visible';
+        } else {
+          const data = JSON.parse(text);
+          document.getElementById('res-input').textContent = `${data.fromTime} at ${data.fromDistance}`;
+          document.getElementById('res-target').textContent = data.toDistance;
+          document.getElementById('res-time').textContent = data.convertedTime;
+          result.className = 'card result visible';
+        }
+      } catch {
+        error.textContent = 'Could not reach the server. Is the app running?';
+        error.className = 'error-msg visible';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Convert';
+      }
+    });
+  </script>
+</body>
+</html>

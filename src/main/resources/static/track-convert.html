@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Convert | Run4Spring</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">Run<span>4</span>Spring</a>
+    <div class="nav-links"><a href="/">Home</a></div>
+  </nav>
+  <main class="container">
+    <div class="page-header">
+      <h1>Track Convert</h1>
+      <p>Adjust race times between different track types and sizes.</p>
+    </div>
+
+    <div class="card">
+      <div class="info-note">
+        Valid conversions involve flat, undersized, oversized, and banked tracks.
+        Not all combinations are supported — the server will explain if a pair is invalid.
+      </div>
+      <form id="form">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Gender</label>
+            <div class="radio-group" style="padding-top: 0.4rem;">
+              <label><input type="radio" name="gender" value="M" checked> Male</label>
+              <label><input type="radio" name="gender" value="F"> Female</label>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="event">Event</label>
+            <select id="event" required>
+              <optgroup label="Sprints / Middle">
+                <option value="200">200m</option>
+                <option value="400">400m</option>
+                <option value="800">800m</option>
+                <option value="1000">1000m</option>
+                <option value="Mile" selected>Mile</option>
+              </optgroup>
+              <optgroup label="Distance">
+                <option value="3000">3000m</option>
+                <option value="5000">5000m</option>
+              </optgroup>
+              <optgroup label="Relays">
+                <option value="4x400">4x400m</option>
+                <option value="DMR">Distance Medley Relay</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fromTrack">From Track</label>
+            <select id="fromTrack" required>
+              <option value="flat">Flat (standard outdoor)</option>
+              <option value="undersized">Undersized (indoor 200m)</option>
+              <option value="oversized">Oversized</option>
+              <option value="banked">Banked (indoor)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="toTrack">To Track</label>
+            <select id="toTrack" required>
+              <option value="flat" selected>Flat (standard outdoor)</option>
+              <option value="undersized">Undersized (indoor 200m)</option>
+              <option value="oversized">Oversized</option>
+              <option value="banked">Banked (indoor)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="time">Race Time</label>
+          <input type="text" id="time" placeholder="e.g. 4:05.50 or 1:52.34" required>
+          <div class="form-hint">Format: M:SS.ss or H:MM:SS</div>
+        </div>
+        <button type="submit" class="btn btn-primary" id="submitBtn">Convert</button>
+      </form>
+      <div class="error-msg" id="error"></div>
+    </div>
+
+    <div class="card result" id="result">
+      <div class="card-title">Result</div>
+      <div class="result-row">
+        <span class="result-label">Event</span>
+        <span class="result-value" id="res-event"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Original Time</span>
+        <span class="result-value" id="res-original"></span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">Track</span>
+        <span class="result-value" id="res-tracks"></span>
+      </div>
+      <div class="result-row" style="border-bottom:none">
+        <span class="result-label">Converted Time</span>
+        <span class="result-big" id="res-time"></span>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const TRACK_LABELS = {
+      flat: 'Flat',
+      undersized: 'Undersized (indoor)',
+      oversized: 'Oversized',
+      banked: 'Banked (indoor)'
+    };
+
+    document.getElementById('form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const error = document.getElementById('error');
+      const result = document.getElementById('result');
+
+      error.className = 'error-msg';
+      result.className = 'card result';
+      btn.disabled = true;
+      btn.textContent = 'Converting...';
+
+      const gender = document.querySelector('input[name="gender"]:checked').value;
+
+      try {
+        const res = await fetch('/api/track/convert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gender,
+            event: document.getElementById('event').value,
+            time: document.getElementById('time').value.trim(),
+            fromTrack: document.getElementById('fromTrack').value,
+            toTrack: document.getElementById('toTrack').value
+          })
+        });
+
+        const text = await res.text();
+        if (!res.ok) {
+          error.textContent = text || 'An error occurred.';
+          error.className = 'error-msg visible';
+        } else {
+          const data = JSON.parse(text);
+          document.getElementById('res-event').textContent = `${data.event} (${data.gender === 'M' ? 'Men' : 'Women'})`;
+          document.getElementById('res-original').textContent = data.originalTime;
+          document.getElementById('res-tracks').textContent =
+            `${TRACK_LABELS[data.fromTrack] || data.fromTrack} → ${TRACK_LABELS[data.toTrack] || data.toTrack}`;
+          document.getElementById('res-time').textContent = data.convertedTime;
+          result.className = 'card result visible';
+        }
+      } catch {
+        error.textContent = 'Could not reach the server. Is the app running?';
+        error.className = 'error-msg visible';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Convert';
+      }
+    });
+  </script>
+</body>
+</html>

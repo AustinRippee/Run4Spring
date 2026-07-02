@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Split Adder | Run4Spring</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="nav-brand">Run<span>4</span>Spring</a>
+    <div class="nav-links"><a href="/">Home</a></div>
+  </nav>
+  <main class="container">
+    <div class="page-header">
+      <h1>Split Adder</h1>
+      <p>Enter your split times to calculate total time and average split.</p>
+    </div>
+
+    <div class="card">
+      <div style="display: flex; gap: 0.75rem; align-items: flex-end;">
+        <div class="form-group" style="margin-bottom:0; flex:1">
+          <label for="splitInput">Split Time</label>
+          <input type="text" id="splitInput" placeholder="e.g. 1:23.45 or 75.5">
+          <div class="form-hint">Format: M:SS, M:SS.ss, or raw seconds</div>
+        </div>
+        <button class="btn btn-primary" onclick="addSplit()" id="addBtn">Add Split</button>
+      </div>
+      <div class="error-msg" id="error"></div>
+    </div>
+
+    <div class="card" id="resultsCard" style="display:none">
+      <div class="card-title">Splits</div>
+      <ul class="split-list" id="splitList"></ul>
+
+      <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 2px solid var(--border);">
+        <div class="result-row">
+          <span class="result-label">Total Splits</span>
+          <span class="result-value" id="statCount"></span>
+        </div>
+        <div class="result-row">
+          <span class="result-label">Total Time</span>
+          <span class="result-big" id="statTotal"></span>
+        </div>
+        <div class="result-row" style="border-bottom:none">
+          <span class="result-label">Average Split</span>
+          <span class="result-value" id="statAvg"></span>
+        </div>
+      </div>
+
+      <button class="btn btn-outline btn-sm" style="margin-top:1rem" onclick="clearSplits()">Clear All</button>
+    </div>
+  </main>
+
+  <script>
+    const splits = [];
+
+    function parseTime(str) {
+      if (!str || !str.trim()) return null;
+      str = str.trim();
+      const parts = str.split(':');
+      if (parts.length === 2) {
+        const m = parseFloat(parts[0]);
+        const s = parseFloat(parts[1]);
+        if (isNaN(m) || isNaN(s)) return null;
+        return m * 60 + s;
+      }
+      const v = parseFloat(str);
+      return isNaN(v) ? null : v;
+    }
+
+    function formatTime(totalSecs) {
+      if (!isFinite(totalSecs) || totalSecs < 0) return '—';
+      const h = Math.floor(totalSecs / 3600);
+      const m = Math.floor((totalSecs % 3600) / 60);
+      const s = (totalSecs % 60).toFixed(2);
+      const ss = parseFloat(s) < 10 ? `0${s}` : s;
+      if (h > 0) {
+        const mm = String(m).padStart(2, '0');
+        return `${h}:${mm}:${ss}`;
+      }
+      return `${m}:${ss}`;
+    }
+
+    function addSplit() {
+      const input = document.getElementById('splitInput');
+      const error = document.getElementById('error');
+      error.className = 'error-msg';
+
+      const secs = parseTime(input.value);
+      if (secs === null || secs <= 0) {
+        error.textContent = 'Enter a valid time (e.g. 1:23.45 or 75.5 seconds).';
+        error.className = 'error-msg visible';
+        return;
+      }
+
+      splits.push(secs);
+      input.value = '';
+      input.focus();
+      render();
+    }
+
+    function removeSplit(i) {
+      splits.splice(i, 1);
+      render();
+    }
+
+    function render() {
+      const card = document.getElementById('resultsCard');
+      const list = document.getElementById('splitList');
+
+      if (!splits.length) {
+        card.style.display = 'none';
+        return;
+      }
+      card.style.display = '';
+
+      list.innerHTML = splits.map((s, i) => `
+        <li class="split-item">
+          <span class="split-num">${i + 1}</span>
+          <span class="split-time">${formatTime(s)}</span>
+          <button class="btn btn-danger btn-sm" onclick="removeSplit(${i})">Remove</button>
+        </li>
+      `).join('');
+
+      const total = splits.reduce((a, b) => a + b, 0);
+      const avg   = total / splits.length;
+      document.getElementById('statCount').textContent = splits.length;
+      document.getElementById('statTotal').textContent = formatTime(total);
+      document.getElementById('statAvg').textContent   = formatTime(avg);
+    }
+
+    function clearSplits() {
+      splits.length = 0;
+      render();
+    }
+
+    document.getElementById('splitInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); addSplit(); }
+    });
+  </script>
+</body>
+</html>
