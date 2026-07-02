@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### SQLite ###
+data/*.db-wal
+data/*.db-shm
