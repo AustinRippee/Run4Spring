@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Track Convert | Run4Spring</title>
+  <title>Indoor Track Convert | Run4Spring</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,15 +13,16 @@
   </nav>
   <main class="container">
     <div class="page-header">
-      <h1>Track Convert</h1>
-      <p>Adjust race times between different track types and sizes.</p>
+      <h1>Indoor Track Conversion</h1>
+      <p>Adjust race times between different indoor track types and sizes.</p>
     </div>
 
     <div class="card">
       <div class="info-note">
-        Valid conversions involve flat, undersized, oversized, and banked tracks.
-        Not all combinations are supported — the server will explain if a pair is invalid.
+        Valid conversions involve flat (200m), undersized (< 200m), oversized (> 200m), and banked (200m) tracks.
+        Not all combinations are supported.
       </div>
+
       <form id="form">
         <div class="form-row">
           <div class="form-group">
@@ -56,19 +57,19 @@
           <div class="form-group">
             <label for="fromTrack">From Track</label>
             <select id="fromTrack" required>
-              <option value="flat">Flat (standard outdoor)</option>
-              <option value="undersized">Undersized (indoor 200m)</option>
-              <option value="oversized">Oversized</option>
-              <option value="banked">Banked (indoor)</option>
+              <option value="flat">Flat (200m)</option>
+              <option value="undersized">Undersized (< 200m)</option>
+              <option value="oversized">Oversized (> 200m)</option>
+              <option value="banked">Banked (200m)</option>
             </select>
           </div>
           <div class="form-group">
             <label for="toTrack">To Track</label>
             <select id="toTrack" required>
-              <option value="flat" selected>Flat (standard outdoor)</option>
-              <option value="undersized">Undersized (indoor 200m)</option>
-              <option value="oversized">Oversized</option>
-              <option value="banked">Banked (indoor)</option>
+              <option value="flat" selected>Flat (200m)</option>
+              <option value="undersized">Undersized (< 200m)</option>
+              <option value="oversized">Oversized (> 200m)</option>
+              <option value="banked">Banked (200m)</option>
             </select>
           </div>
         </div>
