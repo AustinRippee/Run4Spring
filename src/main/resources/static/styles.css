@@ -111,7 +111,8 @@ body {
 }
 .badge-live { background: #d1fae5; color: #065f46; }
 .badge-soon { background: #aaaaaa; color: #ffffff; }
-.badge-wip { background: #651818; color: #afafaf; }
+.badge-wip { background: #af9000; color: #ffffff; }
+.badge-roadmap { background: #651818; color: #ffffff; }
 
 /* ── Forms ───────────────────────────── */
 .form-group { margin-bottom: 1.1rem; }
