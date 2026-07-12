@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.austinrippee</groupId>
     <artifactId>Run4Spring</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.1.1</version>
     <name>Run4Spring</name>
     <description>Run4Spring</description>
     <url/>
