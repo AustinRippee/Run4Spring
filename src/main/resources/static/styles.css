@@ -20,7 +20,11 @@ body {
   color: var(--text);
   line-height: 1.55;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
+
+main { flex: 1; width: 100%; }
 
 /* ── Nav ─────────────────────────────── */
 .navbar {
@@ -305,17 +309,10 @@ input:disabled, select:disabled {
 
 .footer {
   font-size: 0.8rem;
-  z-index: 100;
   color: #1E3A5FFF;
   letter-spacing: -0.3px;
   font-weight: 200;
-  position: sticky;
-  bottom: 0.5rem;
-  width: 100%;
-  height: 56px;
-  padding: 0 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center; /* or space-between */
-  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  text-align: center;
+  flex-shrink: 0;
 }
