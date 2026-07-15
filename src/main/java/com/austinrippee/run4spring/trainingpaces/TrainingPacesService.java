@@ -76,15 +76,31 @@ public class TrainingPacesService {
 
     public double parseTimeToSeconds(String time) {
         if (time == null || time.isEmpty()) return Double.MAX_VALUE;
+
+        boolean threePart = time.matches("^\\d{1,2}:\\d{2}:\\d{2}(\\.\\d{1,3})?$");
+        boolean twoPart = time.matches("^\\d{1,2}:\\d{2}(\\.\\d{1,3})?$");
+
+        if (!threePart && !twoPart) {
+            throw new IllegalArgumentException(
+                    "Invalid time format. Use MM:SS[.SSS] or H:MM:SS[.SSS] (e.g. 3:45.20 or 1:02:30)");
+        }
+
         String[] parts = time.split(":");
         if (parts.length == 3) {
-            return Integer.parseInt(parts[0]) * 3600
-                    + Integer.parseInt(parts[1]) * 60
-                    + Double.parseDouble(parts[2]);
-        } else if (parts.length == 2) {
-            return Integer.parseInt(parts[0]) * 60
-                    + Double.parseDouble(parts[1]);
+            int hours = Integer.parseInt(parts[0]);
+            int minutes = Integer.parseInt(parts[1]);
+            double secs = Double.parseDouble(parts[2]);
+            if (minutes > 59)
+                throw new IllegalArgumentException("Minutes must be between 00 and 59");
+            if (secs >= 60.0)
+                throw new IllegalArgumentException("Seconds must be between 00 and 59.999");
+            return hours * 3600.0 + minutes * 60.0 + secs;
+        } else {
+            int minutes = Integer.parseInt(parts[0]);
+            double secs = Double.parseDouble(parts[1]);
+            if (secs >= 60.0)
+                throw new IllegalArgumentException("Seconds must be between 00 and 59.999");
+            return minutes * 60.0 + secs;
         }
-        return Double.parseDouble(parts[0]);
     }
 }
