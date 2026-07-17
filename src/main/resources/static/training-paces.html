@@ -28,6 +28,9 @@
             <label style="font-weight: normal; display: flex; align-items: center; gap: 0.4rem;">
               <input type="radio" name="inputType" value="threshold"> Threshold Pace
             </label>
+            <label style="font-weight: normal; display: flex; align-items: center; gap: 0.4rem;">
+              <input type="radio" name="inputType" value="vdot"> VDOT Score
+            </label>
           </div>
         </div>
 
@@ -65,6 +68,14 @@
             <label for="thresholdTime">Threshold Pace</label>
             <input type="text" id="thresholdTime" placeholder="e.g. 6:30">
             <div class="form-hint">Format: MM:SS[.SSS] — minutes and seconds must be 2 digits (00–59)</div>
+          </div>
+        </div>
+
+        <div id="vdot-inputs" class="form-row" style="display: none;">
+          <div class="form-group">
+            <label for="vdotScore">VDOT Score</label>
+            <input type="number" id="vdotScore" placeholder="e.g. 50" min="1">
+            <div class="form-hint">Enter a whole number (valid range: 30–85)</div>
           </div>
         </div>
 
@@ -110,9 +121,10 @@
 
     document.querySelectorAll('input[name="inputType"]').forEach(radio => {
       radio.addEventListener('change', () => {
-        const isThreshold = radio.value === 'threshold';
-        document.getElementById('race-inputs').style.display = isThreshold ? 'none' : '';
-        document.getElementById('threshold-inputs').style.display = isThreshold ? '' : 'none';
+        const val = radio.value;
+        document.getElementById('race-inputs').style.display = val === 'race' ? '' : 'none';
+        document.getElementById('threshold-inputs').style.display = val === 'threshold' ? '' : 'none';
+        document.getElementById('vdot-inputs').style.display = val === 'vdot' ? '' : 'none';
       });
     });
 
@@ -128,17 +140,25 @@
       btn.textContent = 'Loading...';
 
       const inputType = document.querySelector('input[name="inputType"]:checked').value;
-      const body = inputType === 'threshold'
-        ? {
-            inputType: 'threshold',
-            thresholdUnit: document.getElementById('thresholdUnit').value,
-            time: document.getElementById('thresholdTime').value.trim()
-          }
-        : {
-            inputType: 'race',
-            distance: document.getElementById('distance').value,
-            time: document.getElementById('time').value.trim()
-          };
+      let body;
+      if (inputType === 'threshold') {
+        body = {
+          inputType: 'threshold',
+          thresholdUnit: document.getElementById('thresholdUnit').value,
+          time: document.getElementById('thresholdTime').value.trim()
+        };
+      } else if (inputType === 'vdot') {
+        body = {
+          inputType: 'vdot',
+          vdotInput: document.getElementById('vdotScore').value.trim()
+        };
+      } else {
+        body = {
+          inputType: 'race',
+          distance: document.getElementById('distance').value,
+          time: document.getElementById('time').value.trim()
+        };
+      }
 
       try {
         const res = await fetch('/api/training/paces', {
