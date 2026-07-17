@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.ResultSetMetaData;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,8 +13,23 @@ import java.util.Set;
 @Service
 public class TrainingPacesService {
 
-    private static final Set<String> VALID_DISTANCES = Set.of(
-            "800", "1500", "Mile", "3000", "5000", "10000", "HalfMarathon", "Marathon"
+    private static final Map<String, String> DISTANCE_TO_COLUMN;
+    static {
+        DISTANCE_TO_COLUMN = new HashMap<>();
+        DISTANCE_TO_COLUMN.put("800", "800");
+        DISTANCE_TO_COLUMN.put("1500", "1500");
+        DISTANCE_TO_COLUMN.put("Mile", "mile");
+        DISTANCE_TO_COLUMN.put("3000", "3000");
+        DISTANCE_TO_COLUMN.put("5000", "5000");
+        DISTANCE_TO_COLUMN.put("10000", "10000");
+        DISTANCE_TO_COLUMN.put("HalfMarathon", "halfmara");
+        DISTANCE_TO_COLUMN.put("Marathon", "marathon");
+    }
+
+    private static final Set<String> VALID_DISTANCES = DISTANCE_TO_COLUMN.keySet();
+
+    private static final Set<String> VALID_THRESHOLD_UNITS = Set.of(
+            "threshold_400", "threshold_km", "threshold_mi"
     );
 
     private final JdbcTemplate jdbc;
@@ -23,16 +39,39 @@ public class TrainingPacesService {
     }
 
     public TrainingPacesResponse getPaces(TrainingPacesRequest request) {
-        if (!VALID_DISTANCES.contains(request.distance())) {
-            throw new IllegalArgumentException(
-                    "Invalid distance. Valid options: " + VALID_DISTANCES);
+        if ("vdot".equals(request.inputType())) {
+            int inputVdot;
+            try {
+                inputVdot = Integer.parseInt(request.vdotInput());
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("VDOT score must be a whole number.");
+            }
+            Map<String, String> paces = getPacesForVdot(inputVdot);
+            if (paces.isEmpty()) {
+                throw new IllegalStateException("No training paces found for VDOT " + inputVdot + ".");
+            }
+            return new TrainingPacesResponse(inputVdot, paces);
         }
 
         double totalSeconds = parseTimeToSeconds(request.time());
-        int vdot = findVdot(request.distance(), totalSeconds);
+        int vdot;
+
+        if ("threshold".equals(request.inputType())) {
+            if (!VALID_THRESHOLD_UNITS.contains(request.thresholdUnit())) {
+                throw new IllegalArgumentException(
+                        "Invalid threshold unit. Valid options: threshold_400, threshold_km, threshold_mi");
+            }
+            vdot = findVdotFromThreshold(request.thresholdUnit(), totalSeconds);
+        } else {
+            if (!VALID_DISTANCES.contains(request.distance())) {
+                throw new IllegalArgumentException(
+                        "Invalid distance. Valid options: " + VALID_DISTANCES);
+            }
+            vdot = findVdot(request.distance(), totalSeconds);
+        }
 
         if (vdot == -1) {
-            throw new IllegalStateException("No matching VDOT found for the given distance and time.");
+            throw new IllegalStateException("No matching VDOT found for the given input.");
         }
 
         Map<String, String> paces = getPacesForVdot(vdot);
@@ -40,12 +79,13 @@ public class TrainingPacesService {
     }
 
     private int findVdot(String distance, double totalSeconds) {
-        String sql = "SELECT vdot, \"" + distance + "\" FROM vdot_estimate ORDER BY \"" + distance + "\" ASC";
+        String column = DISTANCE_TO_COLUMN.get(distance);
+        String sql = "SELECT vdot, \"" + column + "\" FROM vdot_estimate ORDER BY vdot DESC";
         int lastFasterVdot = -1;
 
         List<Map<String, Object>> rows = jdbc.queryForList(sql);
         for (Map<String, Object> row : rows) {
-            Object timeObj = row.get(distance);
+            Object timeObj = row.get(column);
             if (timeObj == null) continue;
             double rowSeconds = parseTimeToSeconds(timeObj.toString());
             if (rowSeconds < totalSeconds) {
@@ -58,6 +98,25 @@ public class TrainingPacesService {
             }
         }
         return lastFasterVdot;
+    }
+
+    private int findVdotFromThreshold(String column, double totalSeconds) {
+        String sql = "SELECT vdot, \"" + column + "\" FROM vdot_paces";
+        int bestVdot = -1;
+        double bestDiff = Double.MAX_VALUE;
+
+        List<Map<String, Object>> rows = jdbc.queryForList(sql);
+        for (Map<String, Object> row : rows) {
+            Object paceObj = row.get(column);
+            if (paceObj == null) continue;
+            double diff = Math.abs(parseTimeToSeconds(paceObj.toString()) - totalSeconds);
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                Object vdotObj = row.get("vdot");
+                if (vdotObj != null) bestVdot = ((Number) vdotObj).intValue();
+            }
+        }
+        return bestVdot;
     }
 
     private Map<String, String> getPacesForVdot(int vdot) {
