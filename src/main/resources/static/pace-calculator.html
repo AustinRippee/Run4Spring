@@ -36,10 +36,17 @@
         <input type="text" id="time" placeholder="e.g. 25:00 or 1:05:30">
         <div class="form-hint">Format: MM:SS[.SSS] or H:MM:SS[.SSS] - seconds must be 2 digits (00–59)</div>
       </div>
-      <div class="form-group">
-        <label for="pace">Pace</label>
-        <input type="text" id="pace" placeholder="e.g. 8:03">
-        <div class="form-hint" id="paceHint">Format: M:SS[.SSS] per mile - seconds must be 2 digits (00–59)</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="paceMi">Pace (per mile)</label>
+          <input type="text" id="paceMi" placeholder="e.g. 8:00">
+          <div class="form-hint">Format: M:SS[.SSS]</div>
+        </div>
+        <div class="form-group">
+          <label for="paceKm">Pace (per km)</label>
+          <input type="text" id="paceKm" placeholder="e.g. 4:58">
+          <div class="form-hint">Format: M:SS[.SSS]</div>
+        </div>
       </div>
 
       <button class="btn btn-primary" id="calcBtn" onclick="calculate()">Calculate</button>
@@ -49,11 +56,12 @@
   </main>
 
   <script>
+    const MILES_TO_KM = 1.60934;
+
     const unitSelect = document.getElementById('unit');
     unitSelect.addEventListener('change', () => {
       const isKm = unitSelect.value === 'km';
       document.getElementById('distanceHint').textContent = isKm ? 'In kilometers' : 'In miles';
-      document.getElementById('paceHint').textContent = `Format: M:SS per ${isKm ? 'km' : 'mile'}`;
     });
 
     function parseTime(str) {
@@ -99,11 +107,13 @@
 
       const distStr  = document.getElementById('distance').value.trim();
       const timeStr  = document.getElementById('time').value.trim();
-      const paceStr  = document.getElementById('pace').value.trim();
+      const paceKmStr = document.getElementById('paceKm').value.trim();
+      const paceMiStr = document.getElementById('paceMi').value.trim();
 
-      const dist = distStr ? parseFloat(distStr) : null;
-      const time = timeStr ? parseTime(timeStr)  : null;
-      const pace = paceStr ? parseTime(paceStr)  : null;
+      const dist    = distStr    ? parseFloat(distStr)    : null;
+      const time    = timeStr    ? parseTime(timeStr)      : null;
+      const paceKm  = paceKmStr  ? parseTime(paceKmStr)   : null;
+      const paceMi  = paceMiStr  ? parseTime(paceMiStr)   : null;
 
       if (distStr && (dist === null || isNaN(dist) || dist <= 0)) {
         error.textContent = 'Invalid distance. Enter a positive number (e.g. 3.1).';
@@ -115,14 +125,26 @@
         error.className = 'error-msg visible';
         return;
       }
-      if (paceStr && pace === null) {
-        error.textContent = 'Invalid pace. Use M:SS[.SSS] (e.g. 8:03).';
+      if (paceKmStr && paceKm === null) {
+        error.textContent = 'Invalid pace (km). Use M:SS[.SSS] (e.g. 4:58).';
+        error.className = 'error-msg visible';
+        return;
+      }
+      if (paceMiStr && paceMi === null) {
+        error.textContent = 'Invalid pace (mile). Use M:SS[.SSS] (e.g. 8:00).';
         error.className = 'error-msg visible';
         return;
       }
 
-      const missing = [dist === null, time === null, pace === null];
-      const missingCount = missing.filter(Boolean).length;
+      // Resolve the single pace value (seconds per mile) from whichever field is filled
+      let paceInMi = null;
+      if (paceMi !== null)     paceInMi = paceMi;
+      else if (paceKm !== null) paceInMi = paceKm * MILES_TO_KM;
+
+      const hasDist = dist !== null;
+      const hasTime = time !== null;
+      const hasPace = paceInMi !== null;
+      const missingCount = [!hasDist, !hasTime, !hasPace].filter(Boolean).length;
 
       if (missingCount === 0) {
         error.textContent = 'All three fields are filled in. Clear one to calculate it.';
@@ -135,25 +157,36 @@
         return;
       }
 
-      if (missing[0]) {
+      const isKm = unitSelect.value === 'km';
+
+      if (!hasDist) {
         // Solve for distance
-        const result = time / pace;
-        document.getElementById('distance').value = result.toFixed(2);
-      } else if (missing[1]) {
+        const distMi = time / paceInMi;
+        document.getElementById('distance').value = (isKm ? distMi * MILES_TO_KM : distMi).toFixed(2);
+        // Fill whichever pace field was empty
+        if (paceMi === null) document.getElementById('paceMi').value = formatPace(paceInMi);
+        if (paceKm === null) document.getElementById('paceKm').value = formatPace(paceInMi / MILES_TO_KM);
+      } else if (!hasTime) {
         // Solve for time
-        const result = dist * pace;
-        document.getElementById('time').value = formatTime(result);
+        const distMi = isKm ? dist / MILES_TO_KM : dist;
+        document.getElementById('time').value = formatTime(distMi * paceInMi);
+        // Fill whichever pace field was empty
+        if (paceMi === null) document.getElementById('paceMi').value = formatPace(paceInMi);
+        if (paceKm === null) document.getElementById('paceKm').value = formatPace(paceInMi / MILES_TO_KM);
       } else {
         // Solve for pace
-        const result = time / dist;
-        document.getElementById('pace').value = formatPace(result);
+        const distMi = isKm ? dist / MILES_TO_KM : dist;
+        const solvedPaceMi = time / distMi;
+        document.getElementById('paceMi').value = formatPace(solvedPaceMi);
+        document.getElementById('paceKm').value = formatPace(solvedPaceMi / MILES_TO_KM);
       }
     }
 
     function clearAll() {
       document.getElementById('distance').value = '';
       document.getElementById('time').value = '';
-      document.getElementById('pace').value = '';
+      document.getElementById('paceKm').value = '';
+      document.getElementById('paceMi').value = '';
       document.getElementById('error').className = 'error-msg';
     }
   </script>
