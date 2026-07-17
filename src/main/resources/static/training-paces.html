@@ -14,15 +14,27 @@
   <main class="container">
     <div class="page-header">
       <h1>Training Paces</h1>
-      <p>Enter a recent race result to get your VDOT score and recommended training zones.</p>
+      <p>Enter a recent race result or threshold pace to get your VDOT score and recommended training zones.</p>
     </div>
 
     <div class="card">
       <form id="form">
-        <div class="form-row">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label>Input Type</label>
+          <div style="display: flex; gap: 1.5rem; margin-top: 0.4rem;">
+            <label style="font-weight: normal; display: flex; align-items: center; gap: 0.4rem;">
+              <input type="radio" name="inputType" value="race" checked> Race Time
+            </label>
+            <label style="font-weight: normal; display: flex; align-items: center; gap: 0.4rem;">
+              <input type="radio" name="inputType" value="threshold"> Threshold Pace
+            </label>
+          </div>
+        </div>
+
+        <div id="race-inputs" class="form-row">
           <div class="form-group">
             <label for="distance">Race Distance</label>
-            <select id="distance" required>
+            <select id="distance">
               <option value="800">800m</option>
               <option value="1500">1500m</option>
               <option value="Mile">Mile</option>
@@ -35,10 +47,27 @@
           </div>
           <div class="form-group">
             <label for="time">Race Time</label>
-            <input type="text" id="time" placeholder="e.g. 20:00 or 1:05:30" required>
+            <input type="text" id="time" placeholder="e.g. 20:00 or 1:05:30">
             <div class="form-hint">Format: MM:SS[.SSS] or H:MM:SS[.SSS] — minutes and seconds must be 2 digits (00–59)</div>
           </div>
         </div>
+
+        <div id="threshold-inputs" class="form-row" style="display: none;">
+          <div class="form-group">
+            <label for="thresholdUnit">Threshold Unit</label>
+            <select id="thresholdUnit">
+              <option value="threshold_mi">per mile</option>
+              <option value="threshold_km">per km</option>
+              <option value="threshold_400">per 400m</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="thresholdTime">Threshold Pace</label>
+            <input type="text" id="thresholdTime" placeholder="e.g. 6:30">
+            <div class="form-hint">Format: MM:SS[.SSS] — minutes and seconds must be 2 digits (00–59)</div>
+          </div>
+        </div>
+
         <button type="submit" class="btn btn-primary" id="submitBtn">Get Training Paces</button>
       </form>
       <div class="error-msg" id="error"></div>
@@ -79,6 +108,14 @@
       rep_km:         'Repetition (per km)',
     };
 
+    document.querySelectorAll('input[name="inputType"]').forEach(radio => {
+      radio.addEventListener('change', () => {
+        const isThreshold = radio.value === 'threshold';
+        document.getElementById('race-inputs').style.display = isThreshold ? 'none' : '';
+        document.getElementById('threshold-inputs').style.display = isThreshold ? '' : 'none';
+      });
+    });
+
     document.getElementById('form').addEventListener('submit', async e => {
       e.preventDefault();
       const btn = document.getElementById('submitBtn');
@@ -90,14 +127,24 @@
       btn.disabled = true;
       btn.textContent = 'Loading...';
 
+      const inputType = document.querySelector('input[name="inputType"]:checked').value;
+      const body = inputType === 'threshold'
+        ? {
+            inputType: 'threshold',
+            thresholdUnit: document.getElementById('thresholdUnit').value,
+            time: document.getElementById('thresholdTime').value.trim()
+          }
+        : {
+            inputType: 'race',
+            distance: document.getElementById('distance').value,
+            time: document.getElementById('time').value.trim()
+          };
+
       try {
         const res = await fetch('/api/training/paces', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            distance: document.getElementById('distance').value,
-            time: document.getElementById('time').value.trim()
-          })
+          body: JSON.stringify(body)
         });
 
         const text = await res.text();
